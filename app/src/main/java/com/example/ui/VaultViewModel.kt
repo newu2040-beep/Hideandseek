@@ -73,7 +73,8 @@ data class VaultUiState(
     val showAboutDialog: Boolean = false,
     val showPermissionsDialog: Boolean = false,
     val isDisguiseCalculatorActive: Boolean = false,
-    val calculatorExpression: String = "0"
+    val calculatorExpression: String = "0",
+    val pendingDeleteIntent: android.content.IntentSender? = null
 )
 
 class VaultViewModel(application: Application) : AndroidViewModel(application) {
@@ -550,7 +551,11 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(toastMessage = null) }
     }
 
-    fun importMediaUris(context: Context, uris: List<Uri>, mediaType: String = "IMAGE") {
+    fun clearPendingDeleteIntent() {
+        _uiState.update { it.copy(pendingDeleteIntent = null) }
+    }
+
+    fun importMediaUris(context: Context, uris: List<Uri>, mediaType: String = "IMAGE", deleteFromPhone: Boolean = false) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(importProgress = 0.01f) }
             val total = uris.size
@@ -573,9 +578,27 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 val progress = (index + 1).toFloat() / total.toFloat()
                 _uiState.update { it.copy(importProgress = progress) }
             }
+
+            var deleteSender: android.content.IntentSender? = null
+            if (deleteFromPhone) {
+                try {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        val pendingIntent = android.provider.MediaStore.createDeleteRequest(context.contentResolver, uris)
+                        deleteSender = pendingIntent.intentSender
+                    } else {
+                        uris.forEach { uri ->
+                            try { context.contentResolver.delete(uri, null, null) } catch (ignored: Exception) {}
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             _uiState.update {
                 it.copy(
                     importProgress = null,
+                    pendingDeleteIntent = deleteSender,
                     toastMessage = "Imported $total ${if (mediaType == "VIDEO") "videos" else "photos"} into private vault"
                 )
             }

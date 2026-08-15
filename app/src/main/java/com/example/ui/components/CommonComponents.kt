@@ -438,14 +438,15 @@ fun PillTabRow(
 @Composable
 fun IosStyleSwitch(
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    activeColor: Color = AccentPurple
 ) {
     Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
         colors = SwitchDefaults.colors(
             checkedThumbColor = Color.White,
-            checkedTrackColor = AccentPurple,
+            checkedTrackColor = activeColor,
             uncheckedThumbColor = Color.White,
             uncheckedTrackColor = Color(0xFF393E58),
             uncheckedBorderColor = Color.Transparent

@@ -22,8 +22,8 @@ class DisguiseModeManager(private val context: Context) {
         DisguiseOption(
             id = "DEFAULT",
             name = "HIDEANDSEEK",
-            aliasClassName = "$packageName.MainActivity",
-            iconResId = R.drawable.app_vault_icon,
+            aliasClassName = "$packageName.DefaultAlias",
+            iconResId = R.drawable.vault_app_icon_1786808376985,
             isDefault = true
         ),
         DisguiseOption(
@@ -93,21 +93,11 @@ class DisguiseModeManager(private val context: Context) {
                 } else {
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                 }
-                
-                // If switching back to default MainActivity
-                if (disguise.isDefault && selectedDisguiseId == "DEFAULT") {
-                    packageManager.setComponentEnabledSetting(
-                        component,
-                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                        PackageManager.DONT_KILL_APP
-                    )
-                } else {
-                    packageManager.setComponentEnabledSetting(
-                        component,
-                        newState,
-                        PackageManager.DONT_KILL_APP
-                    )
-                }
+                packageManager.setComponentEnabledSetting(
+                    component,
+                    newState,
+                    PackageManager.DONT_KILL_APP
+                )
             }
             securityManager.activeDisguiseAlias = selectedDisguiseId
             return true

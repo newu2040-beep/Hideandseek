@@ -539,17 +539,32 @@ fun VideoPlayerView(
                     PlayerView(ctx).apply {
                         this.player = exoPlayer
                         useController = false
+                        setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                    }
+                },
+                update = { playerView ->
+                    if (playerView.player != exoPlayer) {
+                        playerView.player = exoPlayer
                     }
                 },
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            AsyncImage(
-                model = fallbackResId,
-                contentDescription = "Video Poster",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = fallbackResId,
+                    contentDescription = "Video Poster",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+                androidx.compose.material3.CircularProgressIndicator(
+                    color = AccentPurple,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
         }
 
         // Center Play / Pause / Seek Controls

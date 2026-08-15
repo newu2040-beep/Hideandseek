@@ -96,6 +96,10 @@ import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Menu
 import com.example.ui.theme.VaultThemePreset
 
+import androidx.activity.result.IntentSenderRequest
+import androidx.compose.runtime.LaunchedEffect
+import com.example.ui.components.IosStyleSwitch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultHomeScreen(
@@ -109,13 +113,34 @@ fun VaultHomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showImportSheet by remember { mutableStateOf(false) }
+    var deleteOriginalsFromGallery by remember { mutableStateOf(true) }
+
+    // System Media Deletion Launcher for Android 11+
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        viewModel.clearPendingDeleteIntent()
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            viewModel.setToastMessage("Originals removed from phone gallery")
+        }
+    }
+
+    LaunchedEffect(uiState.pendingDeleteIntent) {
+        uiState.pendingDeleteIntent?.let { sender ->
+            try {
+                deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // Media picker launcher for photos
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            viewModel.importMediaUris(context, uris, mediaType = "IMAGE")
+            viewModel.importMediaUris(context, uris, mediaType = "IMAGE", deleteFromPhone = deleteOriginalsFromGallery)
         }
     }
 
@@ -124,7 +149,7 @@ fun VaultHomeScreen(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            viewModel.importMediaUris(context, uris, mediaType = "VIDEO")
+            viewModel.importMediaUris(context, uris, mediaType = "VIDEO", deleteFromPhone = deleteOriginalsFromGallery)
         }
     }
 
@@ -366,6 +391,7 @@ fun VaultHomeScreen(
                             media = media,
                             isSelected = isSelected,
                             isSelectionMode = uiState.isSelectionMode,
+                            securityManager = viewModel.securityManager,
                             isDark = isDark,
                             onClick = {
                                 if (uiState.isSelectionMode) {
@@ -597,7 +623,37 @@ fun VaultHomeScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    // Delete originals from device gallery toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isDark) Color(0xFF1B1E30) else Color(0xFFE8EBF5))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = "Delete original from phone gallery",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textColor
+                            )
+                            Text(
+                                text = "Removes file from camera roll for true hiding",
+                                fontSize = 11.sp,
+                                color = if (isDark) Color(0xFF8E92A8) else Color(0xFF6B6E84)
+                            )
+                        }
+                        IosStyleSwitch(
+                            checked = deleteOriginalsFromGallery,
+                            onCheckedChange = { deleteOriginalsFromGallery = it },
+                            activeColor = AccentPurple
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -609,6 +665,7 @@ fun VaultMediaGridItem(
     media: VaultMediaEntity,
     isSelected: Boolean,
     isSelectionMode: Boolean,
+    securityManager: com.example.security.VaultSecurityManager,
     isDark: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
@@ -618,6 +675,10 @@ fun VaultMediaGridItem(
         media.fileName.contains("Lake") -> R.drawable.sample_lake
         media.fileName.contains("Coast") || media.fileName.contains("Traveler") -> R.drawable.sample_traveler
         else -> R.drawable.sample_mountain
+    }
+
+    val thumbFile = remember(media.encryptedPath) {
+        securityManager.getThumbnailFile(media.encryptedPath)
     }
 
     Box(
@@ -630,7 +691,7 @@ fun VaultMediaGridItem(
         // Thumbnail image
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(File(media.encryptedPath).takeIf { it.exists() } ?: fallbackRes)
+                .data(thumbFile ?: File(media.encryptedPath).takeIf { it.exists() } ?: fallbackRes)
                 .error(fallbackRes)
                 .crossfade(true)
                 .build(),
@@ -641,6 +702,14 @@ fun VaultMediaGridItem(
 
         // Video Badge overlay
         if (media.mediaType == "VIDEO") {
+            val durationText = if (media.durationMs > 0) {
+                val sec = (media.durationMs / 1000) % 60
+                val min = (media.durationMs / 1000) / 60
+                "%d:%02d".format(min, sec)
+            } else {
+                "VIDEO"
+            }
+
             Box(
                 modifier = Modifier
                     .padding(6.dp)
@@ -660,7 +729,7 @@ fun VaultMediaGridItem(
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = "0:15",
+                        text = durationText,
                         fontSize = 10.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Medium

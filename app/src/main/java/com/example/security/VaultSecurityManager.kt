@@ -2,8 +2,11 @@ package com.example.security
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import androidx.security.crypto.EncryptedFile
+import android.os.Build
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.data.model.VaultMediaEntity
@@ -16,7 +19,13 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.UUID
+import javax.crypto.Cipher
+import javax.crypto.CipherInputStream
+import javax.crypto.CipherOutputStream
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class VaultSecurityManager(private val context: Context) {
 
@@ -36,18 +45,24 @@ class VaultSecurityManager(private val context: Context) {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            // Fallback for emulator / environments with keystore reset
+            // Fallback for environments with keystore reset
             context.getSharedPreferences("vault_secure_prefs_fallback", Context.MODE_PRIVATE)
         }
     }
 
-    private val vaultMediaDir: File by lazy {
+    val vaultMediaDir: File by lazy {
         File(context.filesDir, "vault_media").apply {
             if (!exists()) mkdirs()
         }
     }
 
-    private val decryptedCacheDir: File by lazy {
+    val vaultThumbsDir: File by lazy {
+        File(context.filesDir, "vault_thumbs").apply {
+            if (!exists()) mkdirs()
+        }
+    }
+
+    val decryptedCacheDir: File by lazy {
         File(context.cacheDir, "decrypted_temp").apply {
             if (!exists()) mkdirs()
         }
@@ -64,11 +79,14 @@ class VaultSecurityManager(private val context: Context) {
         private const val KEY_BIOMETRIC_ENABLED = "key_biometric_enabled"
         private const val KEY_INTRUDER_SELFIE_ENABLED = "key_intruder_selfie_enabled"
         private const val KEY_DISGUISE_ALIAS = "key_disguise_alias"
-        private const val KEY_THEME_MODE = "key_theme_mode" // "DARK", "LIGHT", "SYSTEM"
+        private const val KEY_THEME_MODE = "key_theme_mode" // "DARK", "LIGHT", "SYSTEM", etc.
         private const val KEY_FAILED_ATTEMPTS = "key_failed_attempts"
         private const val KEY_DEVICE_ADMIN_ENABLED = "key_device_admin_enabled"
+        private const val KEY_VAULT_AES_KEY = "key_vault_aes_key"
 
         const val DEFAULT_PIN = "1234"
+        private const val GCM_IV_LENGTH = 12
+        private const val GCM_TAG_LENGTH = 128
     }
 
     init {
@@ -76,6 +94,31 @@ class VaultSecurityManager(private val context: Context) {
         if (!hasCustomPin()) {
             setPin(DEFAULT_PIN)
         }
+        ensureAesKeyGenerated()
+    }
+
+    private fun ensureAesKeyGenerated() {
+        if (!securePrefs.contains(KEY_VAULT_AES_KEY)) {
+            val keyBytes = ByteArray(32)
+            SecureRandom().nextBytes(keyBytes)
+            val hexKey = keyBytes.joinToString("") { "%02x".format(it) }
+            securePrefs.edit().putString(KEY_VAULT_AES_KEY, hexKey).apply()
+        }
+    }
+
+    private fun getSecretKey(): SecretKeySpec {
+        var hexKey = securePrefs.getString(KEY_VAULT_AES_KEY, null)
+        if (hexKey == null || hexKey.length != 64) {
+            val keyBytes = ByteArray(32)
+            SecureRandom().nextBytes(keyBytes)
+            hexKey = keyBytes.joinToString("") { "%02x".format(it) }
+            securePrefs.edit().putString(KEY_VAULT_AES_KEY, hexKey).apply()
+        }
+        val keyBytes = ByteArray(32)
+        for (i in 0 until 32) {
+            keyBytes[i] = hexKey.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+        }
+        return SecretKeySpec(keyBytes, "AES")
     }
 
     fun hasCustomPin(): Boolean {
@@ -125,35 +168,86 @@ class VaultSecurityManager(private val context: Context) {
         get() = securePrefs.getBoolean(KEY_DEVICE_ADMIN_ENABLED, false)
         set(value) = securePrefs.edit().putBoolean(KEY_DEVICE_ADMIN_ENABLED, value).apply()
 
-    // Encrypt & Save Media to Vault Storage
+    // Encrypt & Save Media to Vault Storage with Thumbnail Generation
     suspend fun saveEncryptedMedia(
         fileName: String,
         inputStream: InputStream,
         mediaType: String,
         originalPath: String = ""
     ): VaultMediaEntity = withContext(Dispatchers.IO) {
-        val encryptedFileName = "enc_${UUID.randomUUID()}_$fileName"
+        val uniqueId = UUID.randomUUID().toString()
+        val encryptedFileName = "enc_${uniqueId}_$fileName"
         val encryptedFileTarget = File(vaultMediaDir, encryptedFileName)
+        val thumbTarget = File(vaultThumbsDir, "thumb_${uniqueId}.jpg")
 
-        val bytes = inputStream.readBytes()
-        val sizeBytes = bytes.size.toLong()
+        val rawBytes = inputStream.readBytes()
+        val sizeBytes = rawBytes.size.toLong()
+        var videoDurationMs = 0L
 
+        // 1. Generate Thumbnail for Instant Preview
         try {
-            val encryptedFile = EncryptedFile.Builder(
-                context,
-                encryptedFileTarget,
-                masterKey,
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
+            if (mediaType == "VIDEO") {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    if (originalPath.isNotEmpty() && originalPath.startsWith("content://")) {
+                        retriever.setDataSource(context, Uri.parse(originalPath))
+                    } else if (originalPath.isNotEmpty() && File(originalPath).exists()) {
+                        retriever.setDataSource(originalPath)
+                    } else {
+                        // Write raw bytes to temporary cache to extract frame
+                        val tempRaw = File(decryptedCacheDir, "raw_${uniqueId}.mp4")
+                        FileOutputStream(tempRaw).use { it.write(rawBytes) }
+                        retriever.setDataSource(tempRaw.absolutePath)
+                        tempRaw.delete()
+                    }
+                    val frameBitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        ?: retriever.frameAtTime
+                    val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    videoDurationMs = durationStr?.toLongOrNull() ?: 0L
 
-            encryptedFile.openFileOutput().use { output ->
-                output.write(bytes)
+                    if (frameBitmap != null) {
+                        FileOutputStream(thumbTarget).use { out ->
+                            frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    try { retriever.release() } catch (ignored: Exception) {}
+                }
+            } else {
+                // Photo thumbnail
+                val options = BitmapFactory.Options().apply { inSampleSize = 2 }
+                val bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, options)
+                if (bmp != null) {
+                    FileOutputStream(thumbTarget).use { out ->
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 2. Encrypt Raw Media with AES-GCM
+        try {
+            val iv = ByteArray(GCM_IV_LENGTH)
+            SecureRandom().nextBytes(iv)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+            cipher.init(Cipher.ENCRYPT_MODE, getSecretKey(), spec)
+
+            val encryptedBytes = cipher.doFinal(rawBytes)
+            FileOutputStream(encryptedFileTarget).use { output ->
+                output.write(iv) // Prepend 12-byte IV
+                output.write(encryptedBytes)
                 output.flush()
             }
         } catch (e: Exception) {
-            // Fallback XOR/direct stream encryption if Hardware Keystore is constrained
+            e.printStackTrace()
+            // Direct write fallback
             FileOutputStream(encryptedFileTarget).use { output ->
-                output.write(bytes)
+                output.write(rawBytes)
             }
         }
 
@@ -163,34 +257,51 @@ class VaultSecurityManager(private val context: Context) {
             encryptedPath = encryptedFileTarget.absolutePath,
             mediaType = mediaType,
             sizeBytes = sizeBytes,
+            durationMs = videoDurationMs,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    // Get Thumbnail File for Grid Display
+    fun getThumbnailFile(encryptedPath: String): File? {
+        val encFile = File(encryptedPath)
+        val name = encFile.name.removePrefix("enc_")
+        val uniqueId = name.substringBefore("_")
+        val thumbFile = File(vaultThumbsDir, "thumb_${uniqueId}.jpg")
+        return if (thumbFile.exists() && thumbFile.length() > 0) thumbFile else null
     }
 
     // Decrypt media to temporary cache file for viewing in Coil / ExoPlayer
     suspend fun getDecryptedFile(encryptedPath: String): File = withContext(Dispatchers.IO) {
         val encFile = File(encryptedPath)
-        val tempFile = File(decryptedCacheDir, "temp_${encFile.name.removePrefix("enc_")}")
-        
+        val ext = if (encryptedPath.endsWith(".mp4", ignoreCase = true)) ".mp4" else ".jpg"
+        val tempFile = File(decryptedCacheDir, "dec_${encFile.name.removePrefix("enc_").substringBeforeLast(".")}$ext")
+
         if (tempFile.exists() && tempFile.length() > 0) {
             return@withContext tempFile
         }
 
         try {
-            val encryptedFile = EncryptedFile.Builder(
-                context,
-                encFile,
-                masterKey,
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
+            val fileBytes = FileInputStream(encFile).use { it.readBytes() }
+            if (fileBytes.size > GCM_IV_LENGTH) {
+                val iv = fileBytes.copyOfRange(0, GCM_IV_LENGTH)
+                val cipherBytes = fileBytes.copyOfRange(GCM_IV_LENGTH, fileBytes.size)
 
-            encryptedFile.openFileInput().use { input ->
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+                cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
+
+                val decryptedBytes = cipher.doFinal(cipherBytes)
                 FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
+                    output.write(decryptedBytes)
+                    output.flush()
                 }
+            } else {
+                FileOutputStream(tempFile).use { it.write(fileBytes) }
             }
         } catch (e: Exception) {
-            // If direct file or error, fallback copy
+            e.printStackTrace()
+            // Direct copy fallback if unencrypted
             if (encFile.exists()) {
                 FileInputStream(encFile).use { input ->
                     FileOutputStream(tempFile).use { output ->
@@ -219,7 +330,7 @@ class VaultSecurityManager(private val context: Context) {
             val values = android.content.ContentValues().apply {
                 put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, media.fileName.removePrefix("imported_"))
                 put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     put(
                         android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
                         if (isVideo) "Movies/HideAndSeek_Restored" else "Pictures/HideAndSeek_Restored"
@@ -239,7 +350,7 @@ class VaultSecurityManager(private val context: Context) {
                     outputStream.flush()
                 }
 
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     values.clear()
                     values.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
                     resolver.update(uri, values, null, null)
@@ -259,10 +370,14 @@ class VaultSecurityManager(private val context: Context) {
         if (file.exists()) {
             file.delete()
         }
-        val tempName = "temp_${file.name.removePrefix("enc_")}"
-        val tempFile = File(decryptedCacheDir, tempName)
-        if (tempFile.exists()) {
-            tempFile.delete()
+        val name = file.name.removePrefix("enc_")
+        val uniqueId = name.substringBefore("_")
+        val thumbFile = File(vaultThumbsDir, "thumb_${uniqueId}.jpg")
+        if (thumbFile.exists()) {
+            thumbFile.delete()
+        }
+        decryptedCacheDir.listFiles()?.forEach { f ->
+            if (f.name.contains(uniqueId)) f.delete()
         }
     }
 

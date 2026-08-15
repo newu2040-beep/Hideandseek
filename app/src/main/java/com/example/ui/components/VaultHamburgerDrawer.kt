@@ -3,10 +3,13 @@ package com.example.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -396,14 +399,15 @@ private fun DrawerHeader(
                 shape = RoundedCornerShape(12.dp),
                 color = activePreset.primary.copy(alpha = 0.15f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, activePreset.primary.copy(alpha = 0.4f)),
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Shield",
-                        tint = activePreset.primary,
-                        modifier = Modifier.size(22.dp)
+                    Image(
+                        painter = painterResource(R.drawable.vault_app_icon_1786808376985),
+                        contentDescription = "App Icon",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(12.dp))
                     )
                 }
             }
