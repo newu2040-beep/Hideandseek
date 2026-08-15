@@ -1,0 +1,6 @@
+{
+  "name": "HIDEANDSEEK",
+  "description": "A private vault space to hide photos, videos, and apps with biometric and PIN security, disguise mode, and intruder selfie protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
