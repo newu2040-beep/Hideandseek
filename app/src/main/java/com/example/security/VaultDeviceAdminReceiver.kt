@@ -11,7 +11,7 @@ class VaultDeviceAdminReceiver : DeviceAdminReceiver() {
         super.onEnabled(context, intent)
         val securityManager = VaultSecurityManager(context)
         securityManager.isDeviceAdminFrictionEnabled = true
-        Toast.makeText(context, "HIDEANDSEEK Vault Protection Activated", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "ONELOCK Vault Protection Activated", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
@@ -22,6 +22,6 @@ class VaultDeviceAdminReceiver : DeviceAdminReceiver() {
         super.onDisabled(context, intent)
         val securityManager = VaultSecurityManager(context)
         securityManager.isDeviceAdminFrictionEnabled = false
-        Toast.makeText(context, "HIDEANDSEEK Protection Deactivated", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "ONELOCK Protection Deactivated", Toast.LENGTH_SHORT).show()
     }
 }

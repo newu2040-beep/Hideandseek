@@ -21,9 +21,9 @@ class DisguiseModeManager(private val context: Context) {
     val availableDisguises = listOf(
         DisguiseOption(
             id = "DEFAULT",
-            name = "HIDEANDSEEK",
+            name = "ONELOCK",
             aliasClassName = "$packageName.DefaultAlias",
-            iconResId = R.drawable.vault_app_icon_1786808376985,
+            iconResId = R.drawable.onelock_icon_1786844769394,
             isDefault = true
         ),
         DisguiseOption(

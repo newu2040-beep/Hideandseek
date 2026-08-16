@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">HIDEANDSEEK</string>
-    <string name="device_admin_label">HIDEANDSEEK Vault Protection</string>
-    <string name="device_admin_description">Protects your HIDEANDSEEK vault from unauthorized uninstallation and tampering.</string>
+    <string name="app_name">ONELOCK</string>
+    <string name="device_admin_label">ONELOCK Vault Protection</string>
+    <string name="device_admin_description">Protects your ONELOCK vault from unauthorized uninstallation and tampering.</string>
     <string name="lock_screen_title">Unlock to access your vault</string>
     <string name="use_pin_instead">Use PIN instead</string>
     <string name="use_biometric_instead">Use Biometrics</string>
@@ -30,9 +30,10 @@
     <string name="disguise_mode_desc">Hide app as another icon</string>
     <string name="theme_title">Theme</string>
     <string name="about_section">ABOUT</string>
-    <string name="about_app">About HIDEANDSEEK</string>
+    <string name="about_app">About ONELOCK</string>
     <string name="app_version">Version 1.0.0</string>
     <string name="credits">Made with ❤️ by Rahul Shah</string>
     <string name="disguise_icon_title">Disguise Icon</string>
     <string name="choose_an_icon">CHOOSE AN ICON</string>
+    <string name="accessibility_service_description">OneLock App Lock Service. Requires accessibility access to detect when a locked app is launched and protect it.</string>
 </resources>

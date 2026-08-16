@@ -77,7 +77,7 @@ import com.example.ui.theme.AccentPurple
 import com.example.ui.theme.AccentPurpleLight
 import com.example.ui.theme.DarkBorder
 import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.HideAndSeekTheme
+import com.example.ui.theme.OneLockTheme
 import com.example.ui.theme.LightBorder
 import com.example.ui.theme.LightSurface
 import com.example.ui.theme.VaultThemePreset
@@ -95,7 +95,7 @@ class MainActivity : FragmentActivity() {
             val uiState by viewModel.uiState.collectAsState()
             val preset = VaultThemePreset.fromId(uiState.themeMode)
 
-            HideAndSeekTheme(themeMode = uiState.themeMode) {
+            OneLockTheme(themeMode = uiState.themeMode) {
                 MainAppContent(viewModel = viewModel, activePreset = preset)
             }
         }
@@ -188,7 +188,35 @@ fun MainAppContent(
                         NavHost(
                             navController = navController,
                             startDestination = "vault",
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            enterTransition = {
+                                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                androidx.compose.animation.slideInHorizontally(
+                                    initialOffsetX = { 100 },
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            exitTransition = {
+                                androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                androidx.compose.animation.slideOutHorizontally(
+                                    targetOffsetX = { -100 },
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popEnterTransition = {
+                                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                androidx.compose.animation.slideInHorizontally(
+                                    initialOffsetX = { -100 },
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popExitTransition = {
+                                androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                androidx.compose.animation.slideOutHorizontally(
+                                    targetOffsetX = { 100 },
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            }
                         ) {
                             composable("vault") {
                                 VaultHomeScreen(

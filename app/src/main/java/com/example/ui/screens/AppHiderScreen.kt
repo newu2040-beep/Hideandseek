@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -86,6 +87,10 @@ import com.example.ui.theme.LightBackground
 import com.example.ui.theme.LightBorder
 import com.example.ui.theme.LightSurface
 
+import com.example.security.AccessibilityUtil
+import com.example.security.AppLockAccessibilityService
+import android.provider.Settings
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppHiderScreen(
@@ -98,6 +103,10 @@ fun AppHiderScreen(
     val focusManager = LocalFocusManager.current
     var showExplanationDialog by remember { mutableStateOf(false) }
     var selectedAppForDetail by remember { mutableStateOf<InstalledAppItem?>(null) }
+    
+    val isAccessibilityEnabled = remember(uiState.installedApps) {
+        AccessibilityUtil.isAccessibilityServiceEnabled(context, AppLockAccessibilityService::class.java)
+    }
 
     // Realtime filtering by Category and Search Query
     val filteredApps = remember(uiState.installedApps, uiState.selectedAppCategory, uiState.appSearchQuery) {
@@ -159,7 +168,7 @@ fun AppHiderScreen(
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "App & Game Hider",
+                        text = "App Lock",
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold,
                         color = textColor
@@ -183,7 +192,7 @@ fun AppHiderScreen(
                     IconButton(onClick = { showExplanationDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "App Hider Info",
+                            contentDescription = "App Lock Info",
                             tint = textColor
                         )
                     }
@@ -243,6 +252,32 @@ fun AppHiderScreen(
                                 tint = subtitleColor,
                                 modifier = Modifier.size(18.dp)
                             )
+                        }
+                    }
+                }
+            }
+
+            if (!isAccessibilityEnabled) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            context.startActivity(intent)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = AccentPurple.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = "Enable", tint = AccentPurple)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Enable App Lock Service", color = textColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text("Tap here to grant accessibility permission to block locked apps.", color = subtitleColor, fontSize = 12.sp)
                         }
                     }
                 }
@@ -337,7 +372,7 @@ fun AppHiderScreen(
                         AppHiderRowItem(
                             app = appItem,
                             isDark = isDark,
-                            onToggle = { viewModel.toggleAppHidden(appItem) },
+                            onToggle = { viewModel.toggleAppLock(appItem.packageName) },
                             onLaunch = {
                                 val launchIntent = context.packageManager.getLaunchIntentForPackage(appItem.packageName)
                                 if (launchIntent != null) {
@@ -367,7 +402,7 @@ fun AppHiderScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "HIDEANDSEEK categorizes all installed games, social messengers, media apps, and system tools in real-time.",
+                            text = "ONELOCK categorizes all installed games, social messengers, media apps, and system tools in real-time.",
                             color = textColor,
                             fontSize = 14.sp
                         )

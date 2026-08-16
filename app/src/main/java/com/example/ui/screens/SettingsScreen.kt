@@ -232,7 +232,7 @@ fun SettingsScreen(
                                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
                                     putExtra(
                                         DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                        "Activate HIDEANDSEEK protection to require an admin step before removing the vault."
+                                        "Activate ONELOCK protection to require an admin step before removing the vault."
                                     )
                                 }
                                 deviceAdminLauncher.launch(intent)
@@ -284,7 +284,7 @@ fun SettingsScreen(
                     SettingsActionRow(
                         icon = Icons.Default.Visibility,
                         title = stringResource(R.string.disguise_mode),
-                        subtitle = "Currently: ${uiState.activeDisguise?.name ?: "HIDEANDSEEK"}",
+                        subtitle = "Currently: ${uiState.activeDisguise?.name ?: "ONELOCK"}",
                         isDark = isDark,
                         onClick = onNavigateToDisguisePicker
                     )

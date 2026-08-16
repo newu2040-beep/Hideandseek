@@ -73,7 +73,7 @@ fun LockScreen(
                 val biometricHelper = BiometricHelper(it)
                 if (biometricHelper.isBiometricAvailable()) {
                     biometricHelper.showBiometricPrompt(
-                        title = "Unlock HIDEANDSEEK",
+                        title = "Unlock ONELOCK",
                         subtitle = "Verify with Fingerprint or Face Unlock",
                         description = "Touch the fingerprint sensor or look at screen for Face Unlock",
                         negativeButtonText = "Use App PIN",
@@ -175,7 +175,7 @@ fun LockScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "HIDEANDSEEK",
+                    text = "ONELOCK",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 4.sp,
@@ -198,7 +198,7 @@ fun LockScreen(
                                 val status = biometricHelper.checkBiometricStatus()
                                 if (status == BiometricHelper.BiometricStatus.AVAILABLE) {
                                     biometricHelper.showBiometricPrompt(
-                                        title = "Unlock HIDEANDSEEK",
+                                        title = "Unlock ONELOCK",
                                         subtitle = "Verify with Fingerprint or Face Unlock",
                                         description = "Touch fingerprint sensor or look at screen for Face Unlock",
                                         negativeButtonText = "Use App PIN",

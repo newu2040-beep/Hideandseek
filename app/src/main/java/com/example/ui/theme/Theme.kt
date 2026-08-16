@@ -61,7 +61,7 @@ private fun createColorSchemeForPreset(preset: VaultThemePreset): ColorScheme {
 }
 
 @Composable
-fun HideAndSeekTheme(
+fun OneLockTheme(
     themeMode: String = "SUPER_AMOLED_BLACK",
     content: @Composable () -> Unit
 ) {

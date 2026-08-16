@@ -83,6 +83,7 @@ class VaultSecurityManager(private val context: Context) {
         private const val KEY_FAILED_ATTEMPTS = "key_failed_attempts"
         private const val KEY_DEVICE_ADMIN_ENABLED = "key_device_admin_enabled"
         private const val KEY_VAULT_AES_KEY = "key_vault_aes_key"
+        private const val KEY_LOCKED_APPS = "key_locked_apps"
 
         const val DEFAULT_PIN = "1234"
         private const val GCM_IV_LENGTH = 12
@@ -95,6 +96,20 @@ class VaultSecurityManager(private val context: Context) {
             setPin(DEFAULT_PIN)
         }
         ensureAesKeyGenerated()
+    }
+
+    fun getLockedApps(): Set<String> {
+        return securePrefs.getStringSet(KEY_LOCKED_APPS, emptySet()) ?: emptySet()
+    }
+
+    fun toggleAppLock(packageName: String) {
+        val current = getLockedApps().toMutableSet()
+        if (current.contains(packageName)) {
+            current.remove(packageName)
+        } else {
+            current.add(packageName)
+        }
+        securePrefs.edit().putStringSet(KEY_LOCKED_APPS, current).apply()
     }
 
     private fun ensureAesKeyGenerated() {
@@ -333,7 +348,7 @@ class VaultSecurityManager(private val context: Context) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     put(
                         android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
-                        if (isVideo) "Movies/HideAndSeek_Restored" else "Pictures/HideAndSeek_Restored"
+                        if (isVideo) "Movies/OneLock_Restored" else "Pictures/OneLock_Restored"
                     )
                     put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
                 }

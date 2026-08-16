@@ -295,7 +295,7 @@ fun AboutDialog(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "HIDEANDSEEK",
+                    text = "ONELOCK",
                     fontWeight = FontWeight.Bold,
                     color = textColor
                 )

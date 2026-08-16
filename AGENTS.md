@@ -1,0 +1,3 @@
+- Use modern Android development practices (Kotlin, Jetpack Compose, Coroutines).
+- Strictly adhere to Material Design 3 and maintain consistent theming.
+- The app name is ONELOCK.

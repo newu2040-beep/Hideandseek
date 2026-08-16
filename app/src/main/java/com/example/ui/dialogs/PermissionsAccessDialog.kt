@@ -186,7 +186,7 @@ fun PermissionsAccessDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "HIDEANDSEEK requires system privileges to secure your media vault, take intruder snapshots, and send security alerts.",
+                    text = "ONELOCK requires system privileges to secure your media vault, take intruder snapshots, and send security alerts.",
                     fontSize = 13.sp,
                     color = subtitleColor,
                     lineHeight = 18.sp

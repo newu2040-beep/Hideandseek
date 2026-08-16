@@ -126,8 +126,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         // Observe hidden apps and refresh installed apps list
         viewModelScope.launch {
             vaultDao.getAllHiddenApps().collect { hiddenList ->
-                val hiddenSet = hiddenList.filter { it.isHidden }.map { it.packageName }.toSet()
-                loadInstalledApps(hiddenSet)
+                loadInstalledApps()
             }
         }
     }
@@ -157,10 +156,11 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadInstalledApps(hiddenSet: Set<String> = emptySet()) {
+    fun loadInstalledApps() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingApps = true) }
-            val apps = appsManager.getInstalledApps(hiddenSet)
+            val lockedSet = securityManager.getLockedApps()
+            val apps = appsManager.getInstalledApps(lockedSet)
             _uiState.update {
                 it.copy(
                     installedApps = apps,
@@ -168,6 +168,11 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    fun toggleAppLock(packageName: String) {
+        securityManager.toggleAppLock(packageName)
+        loadInstalledApps() // refresh the list to update UI
     }
 
     // --- Unlock & Authentication ---
@@ -607,23 +612,6 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- App Hider Toggles ---
 
-    fun toggleAppHidden(item: InstalledAppItem) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val newHidden = !item.isHidden
-            if (newHidden) {
-                vaultDao.setAppHidden(
-                    HiddenAppEntity(
-                        packageName = item.packageName,
-                        appName = item.appName,
-                        isHidden = true
-                    )
-                )
-            } else {
-                vaultDao.unhideApp(item.packageName)
-            }
-        }
-    }
-
     fun onAppSearchQueryChanged(query: String) {
         _uiState.update { it.copy(appSearchQuery = query) }
     }
@@ -633,11 +621,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshInstalledApps() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val hiddenList = vaultDao.getAllHiddenAppsList()
-            val hiddenSet = hiddenList.filter { it.isHidden }.map { it.packageName }.toSet()
-            loadInstalledApps(hiddenSet)
-        }
+        loadInstalledApps()
     }
 
     // --- Settings & Customization ---

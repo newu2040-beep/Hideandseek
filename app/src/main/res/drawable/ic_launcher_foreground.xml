@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/vault_app_icon_1786808376985"
+        android:drawable="@drawable/onelock_icon_1786844769394"
         android:gravity="center" />
 </layer-list>

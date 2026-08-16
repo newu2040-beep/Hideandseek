@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "HIDEANDSEEK"
+rootProject.name = "ONELOCK"
 
 include(":app")

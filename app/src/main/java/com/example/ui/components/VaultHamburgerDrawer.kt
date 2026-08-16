@@ -403,7 +403,7 @@ private fun DrawerHeader(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Image(
-                        painter = painterResource(R.drawable.vault_app_icon_1786808376985),
+                        painter = painterResource(R.drawable.onelock_icon_1786844769394),
                         contentDescription = "App Icon",
                         modifier = Modifier
                             .size(42.dp)
@@ -414,7 +414,7 @@ private fun DrawerHeader(
 
             Column {
                 Text(
-                    text = "HIDEANDSEEK",
+                    text = "ONELOCK",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.2.sp,
@@ -815,7 +815,7 @@ private fun DrawerFooter(
         }
 
         Text(
-            text = "HideAndSeek Vault • v2.4.0 (Super AMOLED)",
+            text = "OneLock Vault • v2.4.0 (Super AMOLED)",
             fontSize = 10.sp,
             color = activePreset.textTertiary,
             modifier = Modifier.align(Alignment.CenterHorizontally)
